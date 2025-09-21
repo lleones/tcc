@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:3.6 
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-pass}
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand({ping: 1})"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  microservice:
+    build:
+      context: ./microservice
+      dockerfile: Dockerfile
+    ports:
+      - "${FLASK_PORT}:${FLASK_PORT}"
+    environment:
+      MONGO_URI: ${MONGO_URI}
+      DB_NAME: ${DB_NAME}
+      COLLECTION_RAW_DATA: ${COLLECTION_RAW_DATA}
+      COLLECTION_COMPRESSED_DATA: ${COLLECTION_COMPRESSED_DATA}
+      ENTITY_ID: ${ENTITY_ID}
+      FLASK_PORT: ${FLASK_PORT}
+    depends_on:
+      mongodb:
+        condition: service_healthy 
+    command: python app.py
+
+volumes:
+  mongo_data:
